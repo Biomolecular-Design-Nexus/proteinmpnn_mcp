@@ -5,13 +5,13 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Installation](#installation)
-- [Local Usage (Scripts)](#local-usage-scripts)
-- [MCP Server Installation](#mcp-server-installation)
-- [Using with Claude Code](#using-with-claude-code)
-- [Using with Gemini CLI](#using-with-gemini-cli)
+- [Integration with Claude Code](#integration-with-claude-code)
+- [Quick Start Examples](#quick-start-examples)
 - [Available Tools](#available-tools)
-- [Examples](#examples)
+- [Architecture](#architecture)
+- [Development](#development)
 - [Troubleshooting](#troubleshooting)
+- [License](#license)
 
 ## Overview
 
