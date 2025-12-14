@@ -1,0 +1,59 @@
+{
+  "_description": "Configuration for protein sequence scoring and likelihood calculation",
+  "_source": "Extracted from examples/use_case_2_sequence_scoring.py",
+  "_usage": "python scripts/sequence_scoring.py --config configs/sequence_scoring_config.json",
+
+  "chains": "A B",
+  "fasta_sequences": "",
+  "temperature": 0.1,
+  "seed": 37,
+  "model": "v_48_020",
+  "use_soluble": false,
+  "save_probs": false,
+  "batch_size": 1,
+
+  "_parameter_descriptions": {
+    "chains": "Space-separated chain IDs to score (e.g., 'A B' or 'A')",
+    "fasta_sequences": "Custom sequences to score in format 'SEQ1/SEQ2' or empty for native sequence",
+    "temperature": "Temperature for sampling (affects probability calculation)",
+    "seed": "Random seed for reproducibility",
+    "model": "ProteinMPNN model version",
+    "use_soluble": "Use soluble protein model weights (true/false)",
+    "save_probs": "Save per-residue probabilities to NPZ files (true/false)",
+    "batch_size": "Batch size for processing"
+  },
+
+  "_examples": {
+    "score_native": {
+      "description": "Score native sequence from PDB",
+      "chains": "A B",
+      "fasta_sequences": "",
+      "save_probs": true
+    },
+    "score_custom": {
+      "description": "Score custom sequences",
+      "chains": "A B",
+      "fasta_sequences": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWUQTPVKTDHQLLECAWLEVR/PQVTLWQRPLVTIKIGSRKEAAELTEAARELEKAARELQAAKAAREAKA",
+      "save_probs": true
+    },
+    "likelihood_analysis": {
+      "description": "Comprehensive likelihood analysis with probabilities",
+      "chains": "A B",
+      "temperature": 0.05,
+      "save_probs": true,
+      "use_soluble": true
+    }
+  },
+
+  "_scoring_interpretation": {
+    "score_meaning": "Lower scores indicate higher likelihood (better sequences)",
+    "local_score": "Average negative log likelihood over designed residues only",
+    "global_score": "Average negative log likelihood over all residues",
+    "typical_ranges": {
+      "excellent": "< 1.0",
+      "good": "1.0 - 2.0",
+      "moderate": "2.0 - 3.0",
+      "poor": "> 3.0"
+    }
+  }
+}

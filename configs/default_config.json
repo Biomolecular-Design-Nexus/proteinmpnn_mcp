@@ -1,0 +1,78 @@
+{
+  "_description": "Default configuration template for all ProteinMPNN MCP scripts",
+  "_version": "1.0.0",
+  "_created": "2024-12-14",
+
+  "general": {
+    "temperature": 0.1,
+    "seed": 37,
+    "model": "v_48_020",
+    "batch_size": 1
+  },
+
+  "design": {
+    "num_sequences": 3,
+    "chains": "A B",
+    "use_soluble": false
+  },
+
+  "paths": {
+    "model_weights": "examples/data/vanilla_model_weights",
+    "output_base": "results",
+    "input_data": "examples/data/inputs"
+  },
+
+  "_model_information": {
+    "available_models": {
+      "vanilla": {
+        "versions": ["v_48_002", "v_48_010", "v_48_020", "v_48_030"],
+        "recommended": "v_48_020",
+        "description": "Standard ProteinMPNN models for full-atom structures"
+      },
+      "ca_only": {
+        "versions": ["v_48_002", "v_48_010", "v_48_020"],
+        "recommended": "v_48_020",
+        "description": "CA-ProteinMPNN models for backbone-only design"
+      },
+      "soluble": {
+        "versions": ["v_48_002", "v_48_010", "v_48_020", "v_48_030"],
+        "recommended": "v_48_020",
+        "description": "Soluble protein specialized models"
+      }
+    }
+  },
+
+  "_parameter_ranges": {
+    "temperature": {
+      "min": 0.01,
+      "max": 1.0,
+      "recommended": "0.1-0.3",
+      "description": "Lower = less diverse, higher = more diverse sequences"
+    },
+    "num_sequences": {
+      "min": 1,
+      "max": 100,
+      "recommended": "3-10",
+      "description": "Number of sequences to generate per target"
+    },
+    "seed": {
+      "min": 0,
+      "max": 2147483647,
+      "description": "Random seed for reproducibility (any 32-bit integer)"
+    }
+  },
+
+  "_script_specific_configs": {
+    "simple_design": "configs/simple_design_config.json",
+    "sequence_scoring": "configs/sequence_scoring_config.json",
+    "batch_design": "configs/batch_design_config.json",
+    "constrained_design": "configs/constrained_design_config.json",
+    "ca_only_design": "configs/ca_only_design_config.json"
+  },
+
+  "_usage_examples": {
+    "load_config": "python scripts/simple_design.py --config configs/simple_design_config.json",
+    "override_config": "python scripts/simple_design.py --config configs/simple_design_config.json --temperature 0.2 --num_sequences 5",
+    "cli_only": "python scripts/simple_design.py --input input.pdb --chains 'A B' --num_sequences 3"
+  }
+}

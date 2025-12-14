@@ -1,0 +1,64 @@
+{
+  "_description": "Configuration for batch protein design processing",
+  "_source": "Extracted from examples/use_case_3_batch_design.py",
+  "_usage": "python scripts/batch_design.py --config configs/batch_design_config.json",
+
+  "chains": "",
+  "num_sequences": 2,
+  "temperature": 0.1,
+  "seed": 37,
+  "model": "v_48_020",
+  "use_soluble": false,
+  "batch_size": 1,
+  "file_pattern": "*.pdb",
+
+  "_parameter_descriptions": {
+    "chains": "Chains to design for all PDBs (empty = auto-detect per PDB)",
+    "num_sequences": "Number of sequences to generate per target PDB",
+    "temperature": "Sampling temperature for all targets",
+    "seed": "Random seed for reproducibility",
+    "model": "ProteinMPNN model version",
+    "use_soluble": "Use soluble protein model weights (true/false)",
+    "batch_size": "Batch size for processing",
+    "file_pattern": "Pattern to match PDB files (*.pdb, *.PDB, *.ent)"
+  },
+
+  "_examples": {
+    "standard_batch": {
+      "description": "Standard batch processing with auto-detection",
+      "chains": "",
+      "num_sequences": 3,
+      "temperature": 0.1,
+      "file_pattern": "*.pdb"
+    },
+    "specific_chains": {
+      "description": "Design specific chains for all PDBs",
+      "chains": "A B",
+      "num_sequences": 5,
+      "temperature": 0.15,
+      "use_soluble": true
+    },
+    "high_throughput": {
+      "description": "High throughput with minimal sequences",
+      "chains": "",
+      "num_sequences": 1,
+      "temperature": 0.1,
+      "file_pattern": "*.pdb"
+    },
+    "diverse_batch": {
+      "description": "Generate diverse sequences for research",
+      "chains": "",
+      "num_sequences": 10,
+      "temperature": 0.2,
+      "use_soluble": true
+    }
+  },
+
+  "_batch_processing_notes": {
+    "auto_chain_detection": "When chains='' (empty), each PDB file is analyzed to determine available chains",
+    "file_patterns": ["*.pdb", "*.PDB", "*.ent"],
+    "output_structure": "Creates one FASTA file per input PDB with all generated sequences",
+    "parsed_data": "Creates parsed_pdbs.jsonl with structural data for all processed PDBs",
+    "performance": "Processing time scales with number of PDBs and sequences per target"
+  }
+}

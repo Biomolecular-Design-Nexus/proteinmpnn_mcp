@@ -1,0 +1,45 @@
+{
+  "_description": "Configuration for simple protein sequence design",
+  "_source": "Extracted from examples/use_case_1_simple_design.py",
+  "_usage": "python scripts/simple_design.py --config configs/simple_design_config.json",
+
+  "chains": "A B",
+  "num_sequences": 3,
+  "temperature": 0.1,
+  "seed": 37,
+  "model": "v_48_020",
+  "use_soluble": false,
+  "batch_size": 1,
+
+  "_parameter_descriptions": {
+    "chains": "Space-separated chain IDs to design (e.g., 'A B' or 'A')",
+    "num_sequences": "Number of sequences to generate per target (1-100)",
+    "temperature": "Sampling temperature (0.1-0.3 recommended, lower = less diverse)",
+    "seed": "Random seed for reproducibility (any integer)",
+    "model": "ProteinMPNN model version (v_48_002, v_48_010, v_48_020, v_48_030)",
+    "use_soluble": "Use soluble protein model weights (true/false)",
+    "batch_size": "Batch size for processing (usually 1)"
+  },
+
+  "_examples": {
+    "basic_design": {
+      "description": "Basic design for a protein complex",
+      "chains": "A B",
+      "num_sequences": 5,
+      "temperature": 0.1
+    },
+    "single_chain": {
+      "description": "Design for single chain protein",
+      "chains": "A",
+      "num_sequences": 10,
+      "temperature": 0.15
+    },
+    "diverse_design": {
+      "description": "More diverse sequence generation",
+      "chains": "A B",
+      "num_sequences": 8,
+      "temperature": 0.25,
+      "use_soluble": true
+    }
+  }
+}

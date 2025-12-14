@@ -1,0 +1,71 @@
+{
+  "_description": "Configuration for constrained protein design with fixed positions",
+  "_source": "Extracted from examples/use_case_4_constrained_design.py",
+  "_usage": "python scripts/constrained_design.py --config configs/constrained_design_config.json",
+
+  "chains_to_design": "A B",
+  "fixed_positions": "",
+  "num_sequences": 3,
+  "temperature": 0.1,
+  "seed": 37,
+  "model": "v_48_020",
+  "use_soluble": false,
+  "batch_size": 1,
+
+  "_parameter_descriptions": {
+    "chains_to_design": "Space-separated chain IDs to design (must match fixed_positions)",
+    "fixed_positions": "Fixed positions per chain: '1 2 3, 10 11 12' (comma-separated for different chains)",
+    "num_sequences": "Number of sequences to generate with constraints",
+    "temperature": "Sampling temperature (lower values respect constraints more strictly)",
+    "seed": "Random seed for reproducibility",
+    "model": "ProteinMPNN model version",
+    "use_soluble": "Use soluble protein model weights (true/false)",
+    "batch_size": "Batch size for processing"
+  },
+
+  "_examples": {
+    "active_site_preservation": {
+      "description": "Preserve active site residues in chain A",
+      "chains_to_design": "A",
+      "fixed_positions": "25 26 27 89 134 136",
+      "num_sequences": 5,
+      "temperature": 0.1
+    },
+    "interface_design": {
+      "description": "Design interface while preserving key contact residues",
+      "chains_to_design": "A B",
+      "fixed_positions": "15 16 17 25 26, 8 9 10 15",
+      "num_sequences": 8,
+      "temperature": 0.15,
+      "use_soluble": true
+    },
+    "catalytic_triad": {
+      "description": "Preserve catalytic residues in enzyme",
+      "chains_to_design": "A",
+      "fixed_positions": "57 102 195",
+      "num_sequences": 10,
+      "temperature": 0.1
+    },
+    "binding_site_design": {
+      "description": "Redesign while keeping binding site residues",
+      "chains_to_design": "A B",
+      "fixed_positions": "23 25 47 48 49 67 89, 12 15 16 34 45",
+      "num_sequences": 6,
+      "temperature": 0.12
+    }
+  },
+
+  "_constraint_format": {
+    "single_chain": "space-separated positions: '1 2 3 25 26'",
+    "multiple_chains": "comma-separated per chain: '1 2 3, 10 11 12, 5 6' for chains A, B, C",
+    "position_numbering": "1-based indexing matching PDB residue numbers",
+    "empty_constraints": "Use empty string '' for no constraints"
+  },
+
+  "_constraint_guidelines": {
+    "functional_residues": "Always fix catalytic residues, binding sites, structural motifs",
+    "interface_residues": "Consider fixing key interface contacts for protein-protein interactions",
+    "temperature_effects": "Lower temperature (0.1) = stricter constraint adherence, higher (0.2-0.3) = more flexibility around constraints",
+    "constraint_density": "Too many constraints (>50% of residues) may limit design space significantly"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "_description": "Configuration for CA-only protein sequence design",
+  "_source": "Extracted from examples/use_case_5_ca_only_design.py",
+  "_usage": "python scripts/ca_only_design.py --config configs/ca_only_design_config.json",
+
+  "chains": "A B",
+  "num_sequences": 3,
+  "temperature": 0.1,
+  "seed": 37,
+  "model": "v_48_020",
+  "batch_size": 1,
+
+  "_parameter_descriptions": {
+    "chains": "Space-separated chain IDs to design using CA coordinates only",
+    "num_sequences": "Number of sequences to generate from backbone trace",
+    "temperature": "Sampling temperature (CA models may need slightly higher values)",
+    "seed": "Random seed for reproducibility",
+    "model": "CA-ProteinMPNN model version (only v_48_002, v_48_010, v_48_020 available)",
+    "batch_size": "Batch size for processing"
+  },
+
+  "_model_specific": {
+    "available_models": ["v_48_002", "v_48_010", "v_48_020"],
+    "model_differences": {
+      "v_48_002": "Earliest CA model version",
+      "v_48_010": "Improved CA model",
+      "v_48_020": "Latest and recommended CA model"
+    },
+    "note": "CA models do not have v_48_030 version, and soluble variants are not available"
+  },
+
+  "_examples": {
+    "standard_ca_design": {
+      "description": "Standard CA-only design for protein complex",
+      "chains": "A B",
+      "num_sequences": 5,
+      "temperature": 0.1,
+      "model": "v_48_020"
+    },
+    "low_resolution_design": {
+      "description": "Design from low-resolution structure",
+      "chains": "A",
+      "num_sequences": 10,
+      "temperature": 0.15,
+      "model": "v_48_020"
+    },
+    "backbone_trace_design": {
+      "description": "Design from backbone trace only",
+      "chains": "A B C",
+      "num_sequences": 8,
+      "temperature": 0.12,
+      "model": "v_48_020"
+    }
+  },
+
+  "_ca_only_applications": {
+    "use_cases": [
+      "Low-resolution structures from cryo-EM",
+      "Backbone traces from computational folding",
+      "Coarse-grained structural models",
+      "Cases where side chain information is unreliable",
+      "Initial design phases before refinement"
+    ],
+    "advantages": [
+      "Works with incomplete structural data",
+      "Focuses on backbone geometry",
+      "Computationally efficient",
+      "Good for initial sequence generation"
+    ],
+    "limitations": [
+      "Less side chain context than full-atom models",
+      "May miss some side chain-dependent interactions",
+      "Limited to backbone geometric constraints"
+    ]
+  },
+
+  "_input_requirements": {
+    "pdb_format": "Standard PDB format (full-atom or CA-only both work)",
+    "coordinate_usage": "Only CA (carbon alpha) coordinates are used, others ignored",
+    "chain_handling": "Specify chains that have valid CA coordinates",
+    "preprocessing": "No special preprocessing required - model extracts CA coordinates automatically"
+  }
+}
