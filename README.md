@@ -1,109 +1,598 @@
 # ProteinMPNN MCP
 
-> An MCP (Model Context Protocol) server providing both synchronous and asynchronous tools for protein sequence design using ProteinMPNN
+> Model Context Protocol (MCP) server providing access to ProteinMPNN protein design capabilities through Claude Code and other MCP-compatible clients.
 
 ## Table of Contents
 - [Overview](#overview)
 - [Installation](#installation)
-- [Integration with Claude Code](#integration-with-claude-code)
-- [Quick Start Examples](#quick-start-examples)
+- [Local Usage (Scripts)](#local-usage-scripts)
+- [MCP Server Installation](#mcp-server-installation)
+- [Using with Claude Code](#using-with-claude-code)
+- [Using with Gemini CLI](#using-with-gemini-cli)
 - [Available Tools](#available-tools)
-- [Architecture](#architecture)
-- [Development](#development)
+- [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
-- [License](#license)
 
 ## Overview
 
-ProteinMPNN MCP provides scaffold-based protein sequence generation and likelihood calculation tools through a unified interface. This server wraps the powerful ProteinMPNN neural network model for AI-powered protein design, enabling both fast single-structure design and large-scale batch processing.
+ProteinMPNN MCP provides a unified interface to ProteinMPNN's protein design capabilities through the Model Context Protocol. This server enables AI assistants like Claude to design protein sequences, score mutations, and perform constrained design operations directly through natural language interactions.
 
 ### Features
-- **Fast sequence design** - Generate protein sequences for given backbone structures in ~10 seconds
-- **Sequence scoring** - Calculate ProteinMPNN likelihood scores for sequence-structure compatibility
-- **Constrained design** - Design with fixed positions to preserve functional sites
-- **Batch processing** - High-throughput design for multiple structures
-- **CA-only design** - Sequence generation from carbon alpha traces
-- **Job management** - Asynchronous processing with real-time monitoring
+- **11 MCP tools** covering all major ProteinMPNN use cases
+- **Dual API design**: Sync (fast) and async (long-running) operations
+- **Job management**: Full background processing with status tracking
+- **Multiple model types**: Standard, CA-only, and soluble protein models
+- **Batch processing**: Handle multiple structures simultaneously
+- **Flexible constraints**: Fixed positions, chain-specific design, custom scoring
+- **Comprehensive validation**: PDB structure checking and example data discovery
 
 ### Directory Structure
 ```
 ./
 ├── README.md               # This file
-├── env/                    # Conda environment
+├── env/                    # Conda environment (Python 3.10.19)
 ├── src/
-│   └── server.py           # MCP server
+│   ├── server.py           # Main MCP server (11 tools)
+│   └── jobs/               # Background job management
 ├── scripts/
-│   ├── simple_design.py      # Basic sequence generation
-│   ├── sequence_scoring.py   # Likelihood calculation
-│   ├── batch_design.py       # Batch processing
-│   ├── constrained_design.py # Design with fixed positions
-│   ├── ca_only_design.py     # CA-only sequence design
-│   └── lib/                  # Shared utilities
+│   ├── simple_design.py    # Basic sequence design
+│   ├── sequence_scoring.py # Sequence evaluation
+│   ├── constrained_design.py # Position-constrained design
+│   ├── ca_only_design.py   # Backbone-only design
+│   ├── batch_design.py     # Multi-file processing
+│   └── lib/                # Shared utilities
 ├── examples/
-│   └── data/               # Demo data
+│   └── data/               # Demo data and model weights
 │       ├── inputs/         # Sample PDB structures
-│       ├── vanilla_model_weights/ # Standard model weights
-│       ├── ca_model_weights/      # CA-only model weights
+│       ├── vanilla_model_weights/ # Standard models
+│       ├── ca_model_weights/     # CA-only models
 │       └── soluble_model_weights/ # Soluble protein models
-├── configs/                # Configuration files
-├── jobs/                   # Job execution directory
+├── configs/                # Configuration templates
+├── tests/                  # Integration tests and prompts
 └── repo/                   # Original ProteinMPNN repository
 ```
+
+---
 
 ## Installation
 
 ### Prerequisites
 - Conda or Mamba (mamba recommended for faster installation)
 - Python 3.10+
-- Git (for cloning ProteinMPNN repository)
-- Claude CLI for testing
-- ~4GB disk space for model weights
+- CUDA-compatible GPU (recommended for performance)
 
-### Quick Setup
+### Create Environment
+Please strictly follow the procedure in `reports/environment_setup.md` to set up the environment. An example workflow is shown below:
+
 ```bash
 # Navigate to the MCP directory
-cd /path/to/proteinmpnn_mcp
+cd /home/xux/Desktop/ProteinMCP/ProteinMCP/tool-mcps/proteinmpnn_mcp
 
-# Activate the pre-configured environment
-eval "$(mamba shell hook --shell bash)"
+# Create conda environment (use mamba if available)
+mamba create -p ./env python=3.10 -y
+# or: conda create -p ./env python=3.10 -y
+
+# Activate environment
 mamba activate ./env
+# or: conda activate ./env
 
-# Verify installation
-python -c "from src.server import mcp; print('MCP Server OK')"
+# Install PyTorch and dependencies
+mamba run -p ./env pip install torch torchvision numpy
+# or: conda run -p ./env pip install torch torchvision numpy
+
+# Install MCP dependencies
+mamba run -p ./env pip install loguru click pandas tqdm fastmcp
+# or: conda run -p ./env pip install loguru click pandas tqdm fastmcp
 ```
 
-### Full Setup (if needed)
+### Verify Installation
 ```bash
-# Create environment and install dependencies
-mamba create -p ./env python=3.10 pip -y
-mamba activate ./env
-pip install fastmcp loguru torch torchvision numpy click pandas tqdm
+# Test environment
+mamba run -p ./env python -c "import torch; import numpy; print('PyTorch:', torch.__version__, 'CUDA:', torch.cuda.is_available())"
 
-# Verify installation
-python -c "import torch; print('PyTorch:', torch.__version__, 'CUDA:', torch.cuda.is_available())"
+# Test ProteinMPNN import
+mamba run -p ./env python -c "import sys; sys.path.append('repo/ProteinMPNN'); import protein_mpnn_utils; print('ProteinMPNN import successful')"
+
+# Test MCP server
+mamba run -p ./env python -c "from src.server import mcp; print('MCP Server OK')"
 ```
 
-## Integration with Claude Code
+---
 
-### Installation
+## Local Usage (Scripts)
+
+You can use the scripts directly without MCP for local processing.
+
+### Available Scripts
+
+| Script | Description | Example |
+|--------|-------------|---------|
+| `scripts/simple_design.py` | Basic sequence design for PDB structures | See below |
+| `scripts/sequence_scoring.py` | Score sequences using ProteinMPNN likelihood | See below |
+| `scripts/constrained_design.py` | Design with fixed position constraints | See below |
+| `scripts/ca_only_design.py` | Design using carbon alpha coordinates only | See below |
+| `scripts/batch_design.py` | Batch process multiple PDB files | See below |
+
+### Script Examples
+
+#### Simple Design
+Generate protein sequences for a PDB structure (completes in ~10 seconds):
+
 ```bash
-# Register MCP server with Claude Code
+# Activate environment
+mamba activate ./env
+
+# Basic usage
+python scripts/simple_design.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/simple_design \
+  --chains "A B" \
+  --num_sequences 5 \
+  --temperature 0.1
+
+# With config file
+python scripts/simple_design.py \
+  --config configs/simple_design_config.json \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb
+```
+
+**Parameters:**
+- `--input, -i`: Path to input PDB file (required)
+- `--output, -o`: Output directory (default: results/simple_design)
+- `--chains`: Space-separated chain IDs to design (e.g., "A B")
+- `--num_sequences`: Number of sequences to generate (default: 3)
+- `--temperature`: Sampling temperature (default: 0.1, lower = less diverse)
+- `--config, -c`: JSON configuration file (optional)
+
+#### Sequence Scoring
+Score protein sequences using ProteinMPNN likelihood (completes in ~8 seconds):
+
+```bash
+# Score native sequence
+python scripts/sequence_scoring.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/scoring \
+  --chains "A B" \
+  --save_probs
+
+# Score custom sequences
+python scripts/sequence_scoring.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/scoring \
+  --fasta_sequences "MKTAYIAK.../DVFSLREM..."
+```
+
+#### Constrained Design
+Design with fixed position constraints (completes in ~15 seconds):
+
+```bash
+python scripts/constrained_design.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/constrained \
+  --chains_to_design "A B" \
+  --fixed_positions "1 2 3 25 26, 10 11 12 15" \
+  --num_sequences 3
+```
+
+#### CA-Only Design
+Design using backbone coordinates only (completes in ~12 seconds):
+
+```bash
+python scripts/ca_only_design.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/ca_only \
+  --chains "A B" \
+  --model "v_48_020" \
+  --num_sequences 3
+```
+
+#### Batch Design
+Process multiple PDB files (time varies with number of files):
+
+```bash
+python scripts/batch_design.py \
+  --input_dir examples/data/inputs/PDB_monomers/pdbs \
+  --output results/batch \
+  --file_pattern "*.pdb" \
+  --num_sequences 2
+```
+
+---
+
+## MCP Server Installation
+
+### Option 1: Using fastmcp (Recommended)
+
+```bash
+# Install MCP server for Claude Code
+mamba activate ./env
+fastmcp install src/server.py --name ProteinMPNN
+```
+
+### Option 2: Manual Installation for Claude Code
+
+```bash
+# Add MCP server to Claude Code
 claude mcp add ProteinMPNN -- $(pwd)/env/bin/python $(pwd)/src/server.py
 
-# Verify registration
+# Verify installation
 claude mcp list
 # Should show: ProteinMPNN: ... - ✓ Connected
 ```
 
-### Verification
-```bash
-# Test server startup
-python src/server.py &
-sleep 5
-pkill -f "python src/server.py"
+### Option 3: Configure in settings.json
 
-# Check tool availability
-python -c "
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "ProteinMPNN": {
+      "command": "/home/xux/Desktop/ProteinMCP/ProteinMCP/tool-mcps/proteinmpnn_mcp/env/bin/python",
+      "args": ["/home/xux/Desktop/ProteinMCP/ProteinMCP/tool-mcps/proteinmpnn_mcp/src/server.py"]
+    }
+  }
+}
+```
+
+---
+
+## Using with Claude Code
+
+After installing the MCP server, you can use it directly in Claude Code.
+
+### Quick Start
+
+```bash
+# Start Claude Code
+claude
+```
+
+### Example Prompts
+
+#### Tool Discovery
+```
+What ProteinMPNN tools are available?
+```
+
+#### Basic Sequence Design
+```
+Use simple_design to generate 5 sequences for @examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb with chains A and B
+```
+
+#### Sequence Scoring
+```
+Score the native sequences in @examples/data/inputs/PDB_monomers/pdbs/5L33.pdb and save probabilities
+```
+
+#### Constrained Design
+```
+Design sequences for @examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb with fixed positions 1,2,3 in chain A and 10,11,12 in chain B
+```
+
+#### Long-Running Tasks (Submit API)
+```
+Submit a large design job for @examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb generating 50 sequences, then check the status
+```
+
+#### Batch Processing
+```
+Submit batch processing for all PDB files in @examples/data/inputs/PDB_monomers/pdbs/ generating 3 sequences each
+```
+
+#### Job Management
+```
+List all my ProteinMPNN jobs and show the status of the most recent one
+```
+
+### Using @ References
+
+In Claude Code, use `@` to reference files and directories:
+
+| Reference | Description |
+|-----------|-------------|
+| `@examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb` | Reference a specific PDB file |
+| `@examples/data/inputs/PDB_monomers/pdbs/` | Reference a directory of PDB files |
+| `@configs/simple_design_config.json` | Reference a config file |
+| `@results/` | Reference output directory |
+
+---
+
+## Using with Gemini CLI
+
+### Configuration
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "ProteinMPNN": {
+      "command": "/home/xux/Desktop/ProteinMCP/ProteinMCP/tool-mcps/proteinmpnn_mcp/env/bin/python",
+      "args": ["/home/xux/Desktop/ProteinMCP/ProteinMCP/tool-mcps/proteinmpnn_mcp/src/server.py"]
+    }
+  }
+}
+```
+
+### Example Prompts
+
+```bash
+# Start Gemini CLI
+gemini
+
+# Example prompts (same as Claude Code)
+> What ProteinMPNN tools are available?
+> Generate protein sequences for examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb
+> Score sequences in examples/data/inputs/PDB_monomers/pdbs/5L33.pdb
+```
+
+---
+
+## Available Tools
+
+### Synchronous Tools (Immediate Response)
+
+These tools return results immediately (< 10 minutes):
+
+| Tool | Description | Parameters | Typical Runtime |
+|------|-------------|------------|-----------------|
+| `simple_design` | Basic sequence design | `input_file`, `chains`, `num_sequences`, `temperature`, `output_dir` | ~10 sec |
+| `sequence_scoring` | Sequence likelihood scoring | `input_file`, `fasta_sequences`, `save_probs`, `output_dir` | ~8 sec |
+| `constrained_design` | Position-constrained design | `input_file`, `chains_to_design`, `fixed_positions`, `num_sequences`, `output_dir` | ~15 sec |
+| `ca_only_design` | Backbone-only design | `input_file`, `chains`, `model`, `num_sequences`, `output_dir` | ~12 sec |
+| `validate_pdb_structure` | PDB file validation | `input_file` | <1 sec |
+| `list_example_structures` | Find demo data | None | <1 sec |
+
+### Asynchronous Tools (Submit API)
+
+These tools return a job_id for tracking (> 10 minutes or many sequences):
+
+| Tool | Description | Parameters | Use Case |
+|------|-------------|------------|----------|
+| `submit_batch_design` | Multi-file processing | `input_dir`, `file_pattern`, `chains`, `num_sequences`, `output_dir`, `job_name` | Process many PDB files |
+| `submit_large_design` | Large sequence generation | `input_file`, `chains`, `num_sequences` (>10), `temperature`, `output_dir`, `job_name` | Generate many sequences |
+
+### Job Management Tools
+
+| Tool | Description | Usage |
+|------|-------------|--------|
+| `get_job_status` | Check job progress | `get_job_status(job_id="abc123")` |
+| `get_job_result` | Get results when completed | `get_job_result(job_id="abc123")` |
+| `get_job_log` | View execution logs | `get_job_log(job_id="abc123", tail=50)` |
+| `cancel_job` | Cancel running job | `cancel_job(job_id="abc123")` |
+| `list_jobs` | List all jobs | `list_jobs(status="running")` |
+
+---
+
+## Examples
+
+### Example 1: Basic Protein Design
+
+**Goal:** Generate diverse sequences for a protein complex
+
+**Using Script:**
+```bash
+python scripts/simple_design.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/example1/ \
+  --chains "A B" \
+  --num_sequences 5 \
+  --temperature 0.15
+```
+
+**Using MCP (in Claude Code):**
+```
+Design 5 diverse protein sequences for @examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb with chains A and B using temperature 0.15
+```
+
+**Expected Output:**
+- 5 FASTA sequences with ProteinMPNN scores
+- Execution metadata with parameters and timing
+- Score data in NPZ format
+
+### Example 2: Sequence Evaluation
+
+**Goal:** Score and analyze existing protein sequences
+
+**Using Script:**
+```bash
+python scripts/sequence_scoring.py \
+  --input examples/data/inputs/PDB_monomers/pdbs/5L33.pdb \
+  --output results/example2/ \
+  --save_probs
+```
+
+**Using MCP (in Claude Code):**
+```
+Score the native sequence in @examples/data/inputs/PDB_monomers/pdbs/5L33.pdb and save per-residue probabilities
+```
+
+**Expected Output:**
+- Sequence likelihood scores
+- Per-residue probabilities (if requested)
+- Analysis of sequence quality
+
+### Example 3: Constrained Design
+
+**Goal:** Design sequences with specific residues fixed
+
+**Using Script:**
+```bash
+python scripts/constrained_design.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/example3/ \
+  --chains_to_design "A B" \
+  --fixed_positions "1 2 3 25 26, 10 11 12 15" \
+  --num_sequences 3
+```
+
+**Using MCP (in Claude Code):**
+```
+Design sequences for @examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb with positions 1,2,3,25,26 fixed in chain A and positions 10,11,12,15 fixed in chain B
+```
+
+**Expected Output:**
+- Sequences with specified positions preserved
+- Constraint validation results
+- Design quality metrics
+
+### Example 4: Batch Processing
+
+**Goal:** Process multiple protein structures at once
+
+**Using Script:**
+```bash
+python scripts/batch_design.py \
+  --input_dir examples/data/inputs/PDB_monomers/pdbs \
+  --output results/example4/ \
+  --num_sequences 2
+```
+
+**Using MCP (in Claude Code):**
+```
+Submit batch processing for all PDB files in @examples/data/inputs/PDB_monomers/pdbs/ generating 2 sequences each, then track the job status
+```
+
+**Expected Output:**
+- Job ID for tracking
+- Results for each processed structure
+- Batch summary statistics
+
+### Example 5: CA-Only Design
+
+**Goal:** Design sequences using only backbone coordinates
+
+**Using Script:**
+```bash
+python scripts/ca_only_design.py \
+  --input examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb \
+  --output results/example5/ \
+  --chains "A B" \
+  --model "v_48_020" \
+  --num_sequences 3
+```
+
+**Using MCP (in Claude Code):**
+```
+Use CA-only design with model v_48_020 to generate 3 sequences for @examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb chains A and B
+```
+
+**Expected Output:**
+- Sequences designed from backbone geometry only
+- CA model performance metrics
+- Comparison with full-atom design (if available)
+
+---
+
+## Demo Data
+
+The `examples/data/inputs/` directory contains sample data for testing:
+
+| File | Description | Use With | Chains |
+|------|-------------|----------|---------|
+| `PDB_complexes/pdbs/3HTN.pdb` | Multi-chain protein complex | All tools | A, B |
+| `PDB_complexes/pdbs/4YOW.pdb` | Protein-protein complex | All tools | A, B, C, D |
+| `PDB_monomers/pdbs/5L33.pdb` | Single-chain protein | simple_design, sequence_scoring | A |
+| `PDB_monomers/pdbs/6MRR.pdb` | Membrane protein monomer | simple_design, ca_only_design | A |
+| `PDB_homooligomers/pdbs/6EHB.pdb` | Symmetric homooligomer | constrained_design, batch_design | A, B, C, D |
+| `PDB_homooligomers/pdbs/4GYT.pdb` | Tetrameric enzyme | All tools | A, B, C, D |
+
+### Model Weights Available
+- **Vanilla models**: `v_48_002`, `v_48_010`, `v_48_020` (recommended), `v_48_030`
+- **CA-only models**: `v_48_002`, `v_48_010`, `v_48_020`
+- **Soluble models**: `v_48_002`, `v_48_010`, `v_48_020`, `v_48_030`
+
+---
+
+## Configuration Files
+
+The `configs/` directory contains configuration templates:
+
+| Config | Description | Parameters |
+|--------|-------------|------------|
+| `simple_design_config.json` | Basic sequence generation | chains, num_sequences, temperature, model |
+| `sequence_scoring_config.json` | Likelihood calculation | chains, save_probs, model |
+| `constrained_design_config.json` | Fixed position design | chains_to_design, fixed_positions, num_sequences |
+| `ca_only_design_config.json` | Backbone-only design | chains, model, num_sequences |
+| `batch_design_config.json` | Multi-file processing | file_pattern, chains, num_sequences |
+| `default_config.json` | Template and documentation | All parameters with descriptions |
+
+### Config Example
+
+```json
+{
+  "chains": "A B",
+  "num_sequences": 5,
+  "temperature": 0.1,
+  "seed": 37,
+  "model": "v_48_020",
+  "use_soluble": false
+}
+```
+
+### Using Configs
+
+```bash
+# Load config file
+python scripts/simple_design.py --config configs/simple_design_config.json --input input.pdb
+
+# Override specific parameters
+python scripts/simple_design.py --config configs/simple_design_config.json --input input.pdb --temperature 0.2 --num_sequences 10
+```
+
+---
+
+## Troubleshooting
+
+### Environment Issues
+
+**Problem:** Environment not found or activation fails
+```bash
+# Recreate environment
+mamba create -p ./env python=3.10 -y
+mamba activate ./env
+mamba run -p ./env pip install torch torchvision numpy loguru click pandas tqdm fastmcp
+```
+
+**Problem:** Import errors or missing dependencies
+```bash
+# Verify environment
+mamba activate ./env
+python -c "import torch, numpy, pandas; print('Dependencies OK')"
+
+# Check ProteinMPNN import
+python -c "import sys; sys.path.append('repo/ProteinMPNN'); import protein_mpnn_utils; print('ProteinMPNN OK')"
+
+# Reinstall if needed
+mamba run -p ./env pip install --force-reinstall torch numpy
+```
+
+### MCP Issues
+
+**Problem:** Server not found in Claude Code
+```bash
+# Check MCP registration
+claude mcp list
+
+# Re-add if needed
+claude mcp remove ProteinMPNN
+claude mcp add ProteinMPNN -- $(pwd)/env/bin/python $(pwd)/src/server.py
+
+# Test server directly
+mamba run -p ./env python src/server.py
+```
+
+**Problem:** Tools not working or import errors
+```bash
+# Test server imports
+mamba run -p ./env python -c "
+from src.server import mcp
+print('MCP server imports successfully')
+"
+
+# Check tool count
+mamba run -p ./env python -c "
 import asyncio
 from src.server import mcp
 async def test():
@@ -111,398 +600,161 @@ async def test():
     print(f'Found {len(tools)} tools')
 asyncio.run(test())
 "
+
+# Verify paths
+python -c "
+import sys
+from pathlib import Path
+script_dir = Path(__file__).parent.resolve()
+print('Script dir:', script_dir)
+print('Scripts dir exists:', (script_dir / 'scripts').exists())
+print('Examples dir exists:', (script_dir / 'examples').exists())
+"
 ```
 
-### With Claude Desktop (Alternative)
-Add to your Claude configuration file:
-```json
-{
-  "mcpServers": {
-    "ProteinMPNN": {
-      "type": "stdio",
-      "command": "/absolute/path/to/proteinmpnn_mcp/env/bin/python",
-      "args": ["/absolute/path/to/proteinmpnn_mcp/src/server.py"]
-    }
-  }
-}
-```
+### Script Issues
 
-### With Gemini CLI (Optional)
-Add to `~/.gemini/settings.json`:
-```json
-{
-  "mcpServers": {
-    "ProteinMPNN": {
-      "command": "/absolute/path/to/proteinmpnn_mcp/env/bin/python",
-      "args": ["/absolute/path/to/proteinmpn_mcp/src/server.py"],
-      "env": {
-        "PYTHONPATH": "/absolute/path/to/proteinmpnn_mcp"
-      }
-    }
-  }
-}
-```
-
-## Quick Start Examples
-
-### In Claude Code:
-```
-# List available tools
-"""markdown
-What MCP tools are available from ProteinMPNN?
-"""
-
-# Validate a structure
-"""markdown
-Use validate_pdb_structure to check examples/data/inputs/PDB_monomers/pdbs/5L33.pdb
-"""
-
-# Design sequences
-"""markdown
-Use simple_design with input_file='examples/data/inputs/PDB_monomers/pdbs/5L33.pdb' chains='A' and num_sequences=3
-
-Please use absolution path to call the mcp servers.
-"""
-
-# Submit a long-running job
-"""markdown
-Use submit_large_design for examples/data/inputs/PDB_monomers/pdbs/5L33.pdb with 20 sequences.
-
-Please use absolution path to call the mcp servers.
-"""
-
-# Check job status
-"""
-Check the status of job f021435b
-"""
-```
-
-
-## Troubleshooting
-
-### Claude Code connection issues
+**Problem:** FileNotFoundError when running scripts
 ```bash
-# Remove and re-add server
-claude mcp remove ProteinMPNN
-claude mcp add ProteinMPNN -- $(pwd)/env/bin/python $(pwd)/src/server.py
+# Use absolute paths
+python scripts/simple_design.py --input $(realpath examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb)
 
-# Check server health
-claude mcp list
+# Check file exists
+ls -la examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb
+
+# Check current directory
+pwd
+# Should be: /home/xux/Desktop/ProteinMCP/ProteinMCP/tool-mcps/proteinmpnn_mcp
 ```
 
-### Tools not found in Claude
-- Ensure server shows "✓ Connected" in `claude mcp list`
-- Restart Claude CLI if needed
-- Check absolute paths in registration command
-
-### Jobs stuck in pending
+**Problem:** Model weights not found
 ```bash
-# Check job directory permissions
+# Check model directories
+ls -la examples/data/
+# Should show: vanilla_model_weights, ca_model_weights, soluble_model_weights
+
+# Check specific model
+ls -la examples/data/vanilla_model_weights/
+# Should contain .pt files for different model versions
+```
+
+### Job Issues
+
+**Problem:** Jobs not starting or getting stuck
+```bash
+# Check job directory
 ls -la jobs/
 
-# View job logs
-ls jobs/*/
-cat jobs/*/job.log
+# Check recent job logs
+find jobs/ -name "*.log" -exec tail -20 {} \;
+
+# Clean stuck jobs
+rm -rf jobs/*/
 ```
 
-### File path errors
-- Use absolute paths for input files
-- Ensure files exist: `ls -la examples/data/inputs/PDB_monomers/pdbs/5L33.pdb`
-- Check current working directory
-
-### Import errors
+**Problem:** Job failed with errors
 ```bash
-# Check PYTHONPATH
-echo $PYTHONPATH
+# In Claude Code, check specific job
+get_job_log with job_id "your-job-id" and tail 100 to see error details
 
-# Verify dependencies
-pip list | grep -E "fastmcp|torch|loguru"
+# Check job status
+get_job_status with job_id "your-job-id"
+
+# Cancel if stuck
+cancel_job with job_id "your-job-id"
 ```
 
-## Testing & Validation
+### Performance Issues
 
-### Pre-deployment Checklist
-- [ ] `claude mcp list` shows ProteinMPNN as Connected
-- [ ] All 13 tools discoverable
-- [ ] `validate_pdb_structure` works with example files
-- [ ] `list_example_structures` returns data
-- [ ] `simple_design` executes without errors
-- [ ] Submit API returns job IDs
-- [ ] Job status tracking works
-- [ ] Error handling for invalid inputs
-
-### Performance Expectations
-- **Tool discovery**: < 2 seconds
-- **File validation**: < 5 seconds
-- **Simple design (1-3 sequences)**: < 30 seconds
-- **Job submission**: < 1 second
-- **Status checks**: < 2 seconds
-
-### Test Files Available
-- `examples/data/inputs/PDB_monomers/pdbs/5L33.pdb` (181KB, Chain A)
-- `examples/data/inputs/PDB_monomers/pdbs/6MRR.pdb` (Chain A)
-- `examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb` (Multi-chain)
-- `examples/data/inputs/PDB_homooligomers/pdbs/6EHB.pdb` (Oligomer)
-```
-
-### Direct Server Start
+**Problem:** Slow execution times
 ```bash
-mamba run -p ./env python src/server.py
+# Check CUDA availability
+mamba run -p ./env python -c "import torch; print('CUDA available:', torch.cuda.is_available(), 'Device count:', torch.cuda.device_count())"
+
+# Reduce batch size in configs
+# Edit configs/*.json and set "batch_size": 1
+
+# Use fewer sequences for testing
+# Set "num_sequences": 1 or 2
 ```
 
-## Available Tools
-
-### Quick Operations (Synchronous API)
-These tools return results immediately (< 10 minutes):
-
-| Tool | Description | Runtime | Usage |
-|------|-------------|---------|-------|
-| `simple_design` | Generate sequences for PDB structure | ~10 sec | Single structure design |
-| `sequence_scoring` | Score sequences with ProteinMPNN | ~8 sec | Evaluate sequence fitness |
-| `constrained_design` | Design with fixed positions | ~15 sec | Position-specific constraints |
-| `ca_only_design` | Design from CA-only structures | ~12 sec | Backbone-only input |
-| `validate_pdb_structure` | Check PDB compatibility | <1 sec | Input validation |
-| `list_example_structures` | List example files | <1 sec | Find test data |
-
-### Long-Running Tasks (Submit API)
-These tools return a job_id for tracking (> 10 minutes):
-
-| Tool | Description | Runtime | Usage |
-|------|-------------|---------|-------|
-| `submit_batch_design` | Process multiple PDB files | >10 min | Batch processing |
-| `submit_large_design` | Generate many sequences | >10 min | Large-scale design |
-
-### Job Management
-| Tool | Description |
-|------|-------------|
-| `get_job_status` | Check job progress and status |
-| `get_job_result` | Retrieve completed job results |
-| `get_job_log` | View job execution logs |
-| `cancel_job` | Cancel running job |
-| `list_jobs` | List all submitted jobs |
-
-## Workflow Examples
-
-### Quick Analysis (Synchronous)
-```
-Use the simple_design tool with:
-- input_file: "examples/data/inputs/PDB_complexes/pdbs/3HTN.pdb"
-- chains: "A B"
-- num_sequences: 3
-→ Returns: Generated sequences immediately
-```
-
-### Long-Running Prediction (Asynchronous)
-```
-1. Submit: Use submit_batch_design with:
-   - input_dir: "examples/data/inputs/PDB_monomers/pdbs"
-   - file_pattern: "*.pdb"
-   → Returns: {"job_id": "abc123", "status": "submitted"}
-
-2. Monitor: Use get_job_status with job_id "abc123"
-   → Returns: {"status": "running", "started_at": "...", ...}
-
-3. Get logs: Use get_job_log with job_id "abc123"
-   → Returns: Real-time execution logs
-
-4. Get results: Use get_job_result with job_id "abc123"
-   → Returns: All generated sequences and files
-```
-
-### Batch Processing
-```
-Use submit_batch_design with:
-- input_dir: "path/to/multiple/pdbs"
-- num_sequences: 5
-→ Processes all PDB files in a single tracked job
-```
-
-### Constrained Design
-```
-Use constrained_design with:
-- input_file: "structure.pdb"
-- chains_to_design: "A B"
-- fixed_positions: "1 2 3, 10 11 12"
-→ Designs sequences with specified positions fixed
-```
-
-## Tool Parameters
-
-### Common Parameters
-- **input_file**: Path to PDB structure file
-- **chains**: Space-separated chain IDs (e.g., "A B C")
-- **num_sequences**: Number of sequences to generate
-- **temperature**: Sampling temperature (default: 0.1)
-- **output_dir**: Directory for output files
-
-### Async-Specific Parameters
-- **job_name**: Optional name for easier job tracking
-- **input_dir**: Directory containing multiple PDB files
-- **file_pattern**: Pattern to match files (e.g., "*.pdb")
-
-### Advanced Parameters
-- **fixed_positions**: Constraint specification (format: "1 2 3, 10 11 12")
-- **model**: Model version for CA-only design
-- **save_probs**: Save per-residue probabilities (scoring)
-
-## Output Formats
-
-### Synchronous Tools
-```json
-{
-  "status": "success",
-  "sequences": [...],
-  "metadata": {
-    "execution_time": "8.2 seconds",
-    "model_used": "v_48_020",
-    "input_chains": ["A", "B"]
-  },
-  "output_files": ["/path/to/sequences.fasta"]
-}
-```
-
-### Asynchronous Jobs
-```json
-{
-  "status": "submitted",
-  "job_id": "abc123",
-  "message": "Job submitted. Use get_job_status('abc123') to check progress."
-}
-```
-
-### Job Status Response
-```json
-{
-  "job_id": "abc123",
-  "job_name": "batch_design_monomers",
-  "status": "completed",
-  "submitted_at": "2024-12-14T14:30:00",
-  "started_at": "2024-12-14T14:30:05",
-  "completed_at": "2024-12-14T14:45:32",
-  "output_files": ["/path/to/results.fasta", "/path/to/metadata.json"]
-}
-```
-
-## Example Files
-
-The server includes example structures for testing:
-
+**Problem:** Out of memory errors
 ```bash
-examples/data/inputs/
-├── PDB_complexes/pdbs/3HTN.pdb     # Multi-chain complex
-├── PDB_homooligomers/pdbs/6EHB.pdb # Homooligomer
-├── PDB_monomers/pdbs/              # Single chain structures
-└── ...
-```
+# Reduce batch size
+# Edit config files to use batch_size: 1
 
-Use `list_example_structures` to see all available examples.
+# Use CPU instead of GPU
+export CUDA_VISIBLE_DEVICES=""
 
-## Architecture
-
-### Directory Structure
-```
-src/
-├── server.py              # Main MCP server
-├── tools/                 # Tool definitions
-├── jobs/                  # Job management
-│   ├── manager.py         # Job queue and execution
-│   └── store.py          # Job persistence
-└── utils.py              # Shared utilities
-
-scripts/                   # Clean implementation scripts
-├── simple_design.py      # Basic sequence design
-├── sequence_scoring.py   # Sequence evaluation
-├── batch_design.py       # Multi-file processing
-├── constrained_design.py # Position constraints
-├── ca_only_design.py     # CA-only design
-└── lib/                  # Shared library functions
-```
-
-### API Design
-
-**Synchronous API** (< 10 minutes)
-- Direct function calls with immediate response
-- Suitable for single structures, quick analysis
-- Error handling with structured responses
-
-**Submit API** (> 10 minutes)
-- Background job execution with job_id tracking
-- Real-time log monitoring and status updates
-- Persistent job state across server restarts
-
-### Job Management Features
-- **Threading**: Background execution without blocking
-- **Persistence**: Jobs survive server restarts
-- **Logging**: Real-time execution monitoring
-- **Cancellation**: Stop running jobs gracefully
-- **Output Collection**: Structured result aggregation
-
-## Development
-
-### Testing
-```bash
-# Run component tests
-mamba run -p ./env python test_tools.py
-
-# Test server startup
-mamba run -p ./env python test_server.py
-
-# Development mode
-fastmcp dev src/server.py
-```
-
-### Adding New Tools
-1. Implement tool function in `src/server.py`
-2. Choose API type (sync vs submit)
-3. Add parameter validation and error handling
-4. Update documentation in `reports/mcp_tools.json`
-5. Add tests to verify functionality
-
-### Configuration
-- **Model weights**: Place in `examples/data/`
-- **Environment**: Use conda/mamba environment in `./env`
-- **Scripts**: Core functionality in `scripts/` directory
-- **Config files**: JSON configs in `configs/` directory
-
-## Troubleshooting
-
-### Common Issues
-1. **Environment activation**: Use `mamba run -p ./env` instead of `mamba activate`
-2. **CUDA availability**: Verify with `torch.cuda.is_available()`
-3. **Model weights**: Ensure files are in `examples/data/`
-4. **Path issues**: Use absolute paths for input files
-
-### Error Handling
-- All tools return structured error responses
-- Check `status` field in responses
-- Use `get_job_log` to debug failed jobs
-- Validate inputs with `validate_pdb_structure`
-
-### Performance Tips
-- Use GPU when available for faster processing
-- Prefer batch processing for multiple files
-- Monitor job logs for progress tracking
-- Cancel unnecessary jobs to free resources
-
-## License
-
-This MCP server wraps the original ProteinMPNN implementation. Please cite the original work and ProteinMCP:
-
-```bibtex
-@article{dauparas2022robust,
-  title={Robust deep learning--based protein sequence design using ProteinMPNN},
-  author={Dauparas, Justas and Anishchenko, Ivan and Bennett, Nathaniel and Bai, Hua and Ragotte, Robert J and Milles, Lukas F and Wicky, Basile IM and Courbet, Alexis and de Haas, Rob J and Bethel, Neville and others},
-  journal={Science},
-  volume={378},
-  number={6615},
-  pages={49--56},
-  year={2022},
-  publisher={American Association for the Advancement of Science}
-}
+# Monitor memory usage
+nvidia-smi  # For GPU memory
+htop        # For system memory
 ```
 
 ---
 
-**Status**: ✅ Fully functional MCP server with 11 tools (4 sync, 2 submit, 5 management)
-**Version**: 1.0.0
-**Last Updated**: 2024-12-14
+## Development
+
+### Running Tests
+
+```bash
+# Activate environment
+mamba activate ./env
+
+# Run integration tests
+python tests/run_integration_tests.py
+
+# Test individual scripts
+python scripts/simple_design.py --input examples/data/inputs/PDB_monomers/pdbs/5L33.pdb --output test_output/
+```
+
+### Starting Dev Server
+
+```bash
+# Run MCP server in development mode
+mamba activate ./env
+fastmcp dev src/server.py
+
+# Test server in another terminal
+mamba activate ./env
+python -c "
+import asyncio
+from src.server import mcp
+async def test():
+    result = await mcp.call_tool('list_example_structures', {})
+    print('Test result:', result)
+asyncio.run(test())
+"
+```
+
+### Adding New Tools
+
+1. Add the script to `scripts/`
+2. Add the tool function to `src/server.py`
+3. Update this README with the new tool documentation
+4. Add integration tests in `tests/`
+
+---
+
+## License
+
+This project uses the MIT License. Based on the original ProteinMPNN implementation.
+
+## Credits
+
+Based on [ProteinMPNN](https://github.com/dauparas/ProteinMPNN) by Justas Dauparas et al.
+
+**Citation:** If you use this software, please cite the original ProteinMPNN paper:
+```
+Dauparas, J., Anishchenko, I., Bennett, N. et al. Robust deep learning–based protein sequence design using ProteinMPNN. Science 378, 49-56 (2022).
+```
+
+---
+
+**Quick Start Summary:**
+1. Install environment: `mamba create -p ./env python=3.10 && mamba activate ./env`
+2. Install dependencies: `mamba run -p ./env pip install torch fastmcp loguru`
+3. Install MCP: `fastmcp install src/server.py --name ProteinMPNN`
+4. Use in Claude Code: `What ProteinMPNN tools are available?`
+
+For detailed installation instructions, see the [Installation](#installation) section above.
