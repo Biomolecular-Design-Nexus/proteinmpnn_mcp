@@ -56,13 +56,25 @@ ProteinMPNN MCP provides a unified interface to ProteinMPNN's protein design cap
 
 ## Installation
 
+### Quick Setup (Recommended)
+
+Run the automated setup script:
+
+```bash
+cd proteinmpnn_mcp
+bash quick_setup.sh
+```
+
+The script will create the conda environment, clone the ProteinMPNN repository, install all dependencies, and display the Claude Code configuration. See `quick_setup.sh --help` for options like `--skip-env` or `--skip-repo`.
+
 ### Prerequisites
 - Conda or Mamba (mamba recommended for faster installation)
 - Python 3.10+
 - CUDA-compatible GPU (recommended for performance)
 
-### Create Environment
-Please strictly follow the procedure in `reports/environment_setup.md` to set up the environment. An example workflow is shown below:
+### Manual Installation (Alternative)
+
+If you prefer manual installation or need to customize the setup, follow `reports/environment_setup.md`:
 
 ```bash
 # Navigate to the MCP directory
