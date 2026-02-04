@@ -19,6 +19,7 @@ Example:
 import argparse
 import subprocess
 import os
+import sys
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, List
 import json
@@ -149,8 +150,9 @@ def run_sequence_scoring(
     model_path = get_model_path(script_dir, config["use_soluble"])
 
     # Prepare ProteinMPNN command
+    # Use sys.executable to ensure we use the same Python interpreter (with torch installed)
     cmd = [
-        "python", str(repo_path / "protein_mpnn_run.py"),
+        sys.executable, str(repo_path / "protein_mpnn_run.py"),
         "--pdb_path", str(input_file),
         "--pdb_path_chains", config["chains"],
         "--out_folder", str(output_dirs['base']),

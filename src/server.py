@@ -102,6 +102,8 @@ def simple_design(
     chains: Optional[str] = None,
     num_sequences: int = 3,
     temperature: float = 0.1,
+    backbone_noise: float = 0.0,
+    omit_AAs: Optional[str] = None,
     output_dir: Optional[str] = None
 ) -> dict:
     """
@@ -114,6 +116,8 @@ def simple_design(
         chains: Space-separated chain IDs to design (e.g., "A B")
         num_sequences: Number of sequences to generate (default: 3)
         temperature: Sampling temperature (default: 0.1)
+        backbone_noise: Gaussian noise std dev for backbone atoms (default: 0.0)
+        omit_AAs: Amino acids to exclude from design (e.g., "C" to exclude cysteine)
         output_dir: Optional directory to save output files
 
     Returns:
@@ -127,6 +131,8 @@ def simple_design(
             chains=chains,
             num_sequences=num_sequences,
             temperature=temperature,
+            backbone_noise=backbone_noise,
+            omit_AAs=omit_AAs or "",
             output_dir=output_dir
         )
         return {"status": "success", **result}
@@ -183,6 +189,9 @@ def constrained_design(
     chains_to_design: Optional[str] = None,
     fixed_positions: Optional[str] = None,
     num_sequences: int = 3,
+    temperature: float = 0.1,
+    backbone_noise: float = 0.0,
+    omit_AAs: Optional[str] = None,
     output_dir: Optional[str] = None
 ) -> dict:
     """
@@ -195,6 +204,9 @@ def constrained_design(
         chains_to_design: Chains to design (e.g., "A B")
         fixed_positions: Fixed positions per chain (format: '1 2 3, 10 11 12')
         num_sequences: Number of sequences to generate
+        temperature: Sampling temperature (default: 0.1)
+        backbone_noise: Gaussian noise std dev for backbone atoms (default: 0.0)
+        omit_AAs: Amino acids to exclude from design (e.g., "C" to exclude cysteine)
         output_dir: Optional directory to save output files
 
     Returns:
@@ -208,6 +220,9 @@ def constrained_design(
             chains_to_design=chains_to_design,
             fixed_positions=fixed_positions,
             num_sequences=num_sequences,
+            temperature=temperature,
+            backbone_noise=backbone_noise,
+            omit_AAs=omit_AAs or "",
             output_dir=output_dir
         )
         return {"status": "success", **result}
@@ -225,6 +240,9 @@ def ca_only_design(
     chains: Optional[str] = None,
     model: str = "v_48_020",
     num_sequences: int = 3,
+    temperature: float = 0.1,
+    backbone_noise: float = 0.0,
+    omit_AAs: Optional[str] = None,
     output_dir: Optional[str] = None
 ) -> dict:
     """
@@ -237,6 +255,9 @@ def ca_only_design(
         chains: Chains to design using CA coordinates
         model: CA model version (v_48_002, v_48_010, v_48_020)
         num_sequences: Number of sequences to generate
+        temperature: Sampling temperature (default: 0.1, use 0.0001 for deterministic)
+        backbone_noise: Gaussian noise std dev for backbone atoms (default: 0.0)
+        omit_AAs: Amino acids to exclude from design (e.g., "C" to exclude cysteine)
         output_dir: Optional directory to save output files
 
     Returns:
@@ -250,6 +271,9 @@ def ca_only_design(
             chains=chains,
             model=model,
             num_sequences=num_sequences,
+            temperature=temperature,
+            backbone_noise=backbone_noise,
+            omit_AAs=omit_AAs or "",
             output_dir=output_dir
         )
         return {"status": "success", **result}
@@ -313,6 +337,8 @@ def submit_large_design(
     chains: Optional[str] = None,
     num_sequences: int = 50,
     temperature: float = 0.1,
+    backbone_noise: float = 0.0,
+    omit_AAs: Optional[str] = None,
     output_dir: Optional[str] = None,
     job_name: Optional[str] = None
 ) -> dict:
@@ -326,6 +352,8 @@ def submit_large_design(
         chains: Space-separated chain IDs to design
         num_sequences: Number of sequences to generate (large number)
         temperature: Sampling temperature
+        backbone_noise: Gaussian noise std dev for backbone atoms (default: 0.0)
+        omit_AAs: Amino acids to exclude from design (e.g., "C" to exclude cysteine)
         output_dir: Directory for outputs
         job_name: Optional name for tracking
 
@@ -334,15 +362,23 @@ def submit_large_design(
     """
     script_path = str(SCRIPTS_DIR / "simple_design.py")
 
+    args = {
+        "input": input_file,
+        "chains": chains,
+        "num_sequences": num_sequences,
+        "temperature": temperature,
+        "output": output_dir
+    }
+
+    # Add optional parameters only if specified
+    if backbone_noise > 0:
+        args["backbone_noise"] = backbone_noise
+    if omit_AAs:
+        args["omit_AAs"] = omit_AAs
+
     return job_manager.submit_job(
         script_path=script_path,
-        args={
-            "input": input_file,
-            "chains": chains,
-            "num_sequences": num_sequences,
-            "temperature": temperature,
-            "output": output_dir
-        },
+        args=args,
         job_name=job_name or f"large_design_{num_sequences}_seqs"
     )
 

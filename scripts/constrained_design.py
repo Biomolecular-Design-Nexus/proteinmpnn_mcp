@@ -19,6 +19,7 @@ Example:
 import argparse
 import subprocess
 import os
+import sys
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, List
 import json
@@ -42,7 +43,9 @@ DEFAULT_CONFIG = {
     "seed": 37,
     "model": "v_48_020",
     "use_soluble": False,
-    "batch_size": 1
+    "batch_size": 1,
+    "backbone_noise": 0.0,
+    "omit_AAs": ""
 }
 
 VALID_MODELS = ["v_48_002", "v_48_010", "v_48_020", "v_48_030"]
@@ -73,8 +76,9 @@ def create_chain_assignment_file(
     assigned_path = output_dir / "assigned_pdbs.jsonl"
 
     # Create assignment using repo script
+    # Use sys.executable to ensure we use the same Python interpreter
     cmd = [
-        "python", str(repo_path / "helper_scripts" / "assign_fixed_chains.py"),
+        sys.executable, str(repo_path / "helper_scripts" / "assign_fixed_chains.py"),
         "--input_path", str(pdb_file.parent),
         "--output_path", str(assigned_path),
         "--chain_list", " ".join(chains_to_design)
@@ -135,8 +139,9 @@ def create_fixed_positions_file(
         return fixed_path
 
     # Create fixed positions using repo script
+    # Use sys.executable to ensure we use the same Python interpreter
     cmd = [
-        "python", str(repo_path / "helper_scripts" / "make_fixed_positions_dict.py"),
+        sys.executable, str(repo_path / "helper_scripts" / "make_fixed_positions_dict.py"),
         "--input_path", str(pdb_file.parent),
         "--output_path", str(fixed_path),
         "--chain_list", " ".join(chains_to_design)
@@ -174,8 +179,9 @@ def parse_pdb_single(pdb_file: Path, output_dir: Path) -> Path:
     repo_path = get_repo_path(script_dir)
     parsed_path = output_dir / "parsed_pdbs.jsonl"
 
+    # Use sys.executable to ensure we use the same Python interpreter
     cmd = [
-        "python", str(repo_path / "helper_scripts" / "parse_multiple_chains.py"),
+        sys.executable, str(repo_path / "helper_scripts" / "parse_multiple_chains.py"),
         "--input_path", str(pdb_file.parent),
         "--output_path", str(parsed_path)
     ]
@@ -275,8 +281,9 @@ def run_constrained_design(
     )
 
     # Prepare ProteinMPNN command
+    # Use sys.executable to ensure we use the same Python interpreter (with torch installed)
     cmd = [
-        "python", str(repo_path / "protein_mpnn_run.py"),
+        sys.executable, str(repo_path / "protein_mpnn_run.py"),
         "--jsonl_path", str(parsed_pdbs_file),
         "--chain_id_jsonl", str(assigned_pdbs_file),
         "--fixed_positions_jsonl", str(fixed_pdbs_file),
@@ -292,6 +299,14 @@ def run_constrained_design(
     # Add soluble model flag if needed
     if config["use_soluble"]:
         cmd.append("--use_soluble_model")
+
+    # Add backbone noise if specified
+    if config.get("backbone_noise", 0.0) > 0:
+        cmd.extend(["--backbone_noise", str(config["backbone_noise"])])
+
+    # Add omit_AAs if specified
+    if config.get("omit_AAs"):
+        cmd.extend(["--omit_AAs", config["omit_AAs"]])
 
     # Execute ProteinMPNN
     print(f"\n🔧 Executing ProteinMPNN with constraints...")
@@ -448,6 +463,16 @@ def main():
         help='Use soluble protein model weights'
     )
     parser.add_argument(
+        '--backbone_noise', type=float,
+        default=DEFAULT_CONFIG["backbone_noise"],
+        help=f'Gaussian noise std dev for backbone atoms (default: {DEFAULT_CONFIG["backbone_noise"]})'
+    )
+    parser.add_argument(
+        '--omit_AAs',
+        default=DEFAULT_CONFIG["omit_AAs"],
+        help='Amino acids to exclude from design (e.g., "C" to exclude cysteine)'
+    )
+    parser.add_argument(
         '--config', '-c',
         help='Config file (JSON) to override defaults'
     )
@@ -468,7 +493,9 @@ def main():
         'temperature': args.temperature,
         'seed': args.seed,
         'model': args.model,
-        'use_soluble': args.use_soluble
+        'use_soluble': args.use_soluble,
+        'backbone_noise': args.backbone_noise,
+        'omit_AAs': args.omit_AAs
     })
 
     # Run

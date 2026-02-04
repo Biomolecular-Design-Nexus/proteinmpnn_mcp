@@ -19,6 +19,7 @@ Example:
 import argparse
 import subprocess
 import os
+import sys
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, List
 import json
@@ -77,8 +78,9 @@ def parse_pdbs_in_directory(
     parsed_path = output_dir / "parsed_pdbs.jsonl"
 
     # Use the repo's parsing script
+    # Use sys.executable to ensure we use the same Python interpreter
     cmd = [
-        "python", str(repo_path / "helper_scripts" / "parse_multiple_chains.py"),
+        sys.executable, str(repo_path / "helper_scripts" / "parse_multiple_chains.py"),
         "--input_path", str(input_dir),
         "--output_path", str(parsed_path)
     ]
@@ -187,8 +189,9 @@ def run_batch_design(
     parsed_pdbs_file = parse_pdbs_in_directory(input_dir, output_dirs['base'], config["file_pattern"])
 
     # Prepare ProteinMPNN command
+    # Use sys.executable to ensure we use the same Python interpreter (with torch installed)
     cmd = [
-        "python", str(repo_path / "protein_mpnn_run.py"),
+        sys.executable, str(repo_path / "protein_mpnn_run.py"),
         "--jsonl_path", str(parsed_pdbs_file),
         "--out_folder", str(output_dirs['base']),
         "--num_seq_per_target", str(config["num_sequences"]),

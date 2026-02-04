@@ -19,6 +19,7 @@ Example:
 import argparse
 import subprocess
 import os
+import sys
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, List
 import json
@@ -40,7 +41,9 @@ DEFAULT_CONFIG = {
     "temperature": 0.1,
     "seed": 37,
     "model": "v_48_020",
-    "batch_size": 1
+    "batch_size": 1,
+    "backbone_noise": 0.0,
+    "omit_AAs": ""
 }
 
 VALID_MODELS = ["v_48_002", "v_48_010", "v_48_020"]  # Note: CA models only have 3 versions
@@ -100,8 +103,9 @@ def run_ca_only_design(
     model_path = get_model_path(script_dir, use_soluble=False, ca_only=True)
 
     # Prepare ProteinMPNN command with CA-specific flags
+    # Use sys.executable to ensure we use the same Python interpreter (with torch installed)
     cmd = [
-        "python", str(repo_path / "protein_mpnn_run.py"),
+        sys.executable, str(repo_path / "protein_mpnn_run.py"),
         "--pdb_path", str(input_file),
         "--pdb_path_chains", config["chains"],
         "--out_folder", str(output_dirs['base']),
@@ -113,6 +117,14 @@ def run_ca_only_design(
         "--path_to_model_weights", str(model_path),
         "--ca_only"  # Enable CA-only mode
     ]
+
+    # Add backbone noise if specified
+    if config.get("backbone_noise", 0.0) > 0:
+        cmd.extend(["--backbone_noise", str(config["backbone_noise"])])
+
+    # Add omit_AAs if specified
+    if config.get("omit_AAs"):
+        cmd.extend(["--omit_AAs", config["omit_AAs"]])
 
     # Execute ProteinMPNN
     print(f"🧬 Running ProteinMPNN CA-Only Design")
@@ -252,6 +264,16 @@ def main():
         help=f'CA model version (default: {DEFAULT_CONFIG["model"]})'
     )
     parser.add_argument(
+        '--backbone_noise', type=float,
+        default=DEFAULT_CONFIG["backbone_noise"],
+        help=f'Gaussian noise std dev for backbone atoms (default: {DEFAULT_CONFIG["backbone_noise"]})'
+    )
+    parser.add_argument(
+        '--omit_AAs',
+        default=DEFAULT_CONFIG["omit_AAs"],
+        help='Amino acids to exclude from design (e.g., "C" to exclude cysteine)'
+    )
+    parser.add_argument(
         '--config', '-c',
         help='Config file (JSON) to override defaults'
     )
@@ -270,7 +292,9 @@ def main():
         'num_sequences': args.num_sequences,
         'temperature': args.temperature,
         'seed': args.seed,
-        'model': args.model
+        'model': args.model,
+        'backbone_noise': args.backbone_noise,
+        'omit_AAs': args.omit_AAs
     })
 
     # Run
