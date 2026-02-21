@@ -17,7 +17,12 @@ RUN pip install --no-cache-dir \
     && pip install --no-cache-dir -U cryptography certifi
 
 # Clone ProteinMPNN repository (includes model weights ~71MB)
-RUN git clone https://github.com/dauparas/ProteinMPNN.git /app/repo/ProteinMPNN
+RUN mkdir -p /app/repo && \
+    for attempt in 1 2 3; do \
+      echo "Clone attempt $attempt/3"; \
+      git clone --depth 1 https://github.com/dauparas/ProteinMPNN.git /app/repo/ProteinMPNN && break; \
+      if [ $attempt -lt 3 ]; then sleep 5; fi; \
+    done
 
 # Copy model weights into examples/data/ so get_model_path() finds them
 RUN mkdir -p /app/examples/data && \
