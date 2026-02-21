@@ -41,11 +41,15 @@ print('All checkpoints ready')"
 
 # Copy application source
 COPY src/ ./src/
+RUN chmod -R a+r /app/src/
 COPY scripts/ ./scripts/
+RUN chmod -R a+r /app/scripts/
 COPY configs/ ./configs/
+RUN chmod -R a+r /app/configs/
 
 # Copy example input PDB files
 COPY examples/ ./examples/
+RUN chmod -R a+r /app/examples/
 
 # Create working directories
 RUN mkdir -p /app/results /app/jobs /app/tmp
